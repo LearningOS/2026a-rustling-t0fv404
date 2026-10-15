@@ -2,8 +2,6 @@
     single linked list merge
     This problem requires you to merge two ordered singly linked lists into one ordered singly linked list
 */
-// I AM NOT DONE
-
 use std::fmt::{self, Display, Formatter};
 use std::ptr::NonNull;
 use std::vec::*;
@@ -66,23 +64,51 @@ impl<T> LinkedList<T> {
             },
         }
     }
-    pub fn merge(list_a: LinkedList<T>, list_b: LinkedList<T>) -> Self {
-        let c_a = &mut list_a.start;
-        let c_b = &mut list_b.start;
-        while let Some(n_a) = c_a {
-            match c_b {
-                Some(n_b) => {
-                    let p_b = unsafe {*n_b.as_ptr()};
-                    let p_a = unsafe {*n_a.as_ptr()};
-                    if (p_b.val > p_a.val) {
-                        p_a.next = Some(NonNull::new_unchecked(p_b));
-                    }
-                }
-                _ =>
+    pub fn merge(list_a: LinkedList<T>, list_b: LinkedList<T>) -> Self
+    where
+        T: PartialOrd,
+    {
+        let mut a = list_a.start;
+        let mut b = list_b.start;
+        let mut start: Option<NonNull<Node<T>>> = None;
+        let mut end: Option<NonNull<Node<T>>> = None;
+        let mut length = 0u32;
+
+        while a.is_some() || b.is_some() {
+            let take_a = match (a, b) {
+                (Some(_), None) => true,
+                (None, Some(_)) => false,
+                (Some(pa), Some(pb)) => unsafe { (*pa.as_ptr()).val <= (*pb.as_ptr()).val },
+                (None, None) => unreachable!(),
+            };
+
+            let node = if take_a { a.unwrap() } else { b.unwrap() };
+            if take_a {
+                a = unsafe { (*node.as_ptr()).next };
+            } else {
+                b = unsafe { (*node.as_ptr()).next };
             }
-            let c_a = unsafe {(*n_a.as_ptr()).next};
+
+            // Detach the node before appending it to the merged list.
+            unsafe {
+                (*node.as_ptr()).next = None;
+            }
+
+            match end {
+                None => start = Some(node),
+                Some(prev) => unsafe {
+                    (*prev.as_ptr()).next = Some(node);
+                },
+            }
+            end = Some(node);
+            length += 1;
         }
-        list_a
+
+        LinkedList {
+            length,
+            start,
+            end,
+        }
     }
 }
 
